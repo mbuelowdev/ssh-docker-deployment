@@ -7,7 +7,7 @@ A reusable GitHub Actions workflow for building and deploying Docker application
 The workflow follows a structured deployment process:
 
 1. **Build Phase**
-   - Extracts deployment configuration from JSON
+   - Extracts deployment configuration from deployment.json
    - Builds Docker image and exports as tarball
    - Sets up Docker Buildx for advanced build features
 
@@ -22,25 +22,6 @@ The workflow follows a structured deployment process:
 
 3. **Notification Phase**
    - Sends Discord notification with deployment details
-
-## Workflow Steps
-
-| Step | Description |
-|------|-------------|
-| **Get start time** | Records timing for build duration calculation |
-| **Checkout repository** | Downloads source code |
-| **Checkout workflow repository** | Downloads deployment scripts |
-| **Setup SSH** | Configures SSH key and known hosts |
-| **Extract configuration** | Parses deployment.json for parameters |
-| **Build Docker image** | Creates and exports Docker image as tarball |
-| **Setup deployment lock** | Acquires exclusive deployment access |
-| **Stop existing containers** | Gracefully stops running containers |
-| **Prune Docker resources** | Cleans up unused images/containers |
-| **Deploy repository** | Transfers and extracts application code |
-| **Load Docker image** | Loads new Docker image on remote server |
-| **Start new containers** | Launches updated containers |
-| **Release deployment lock** | Unlocks deployment machine |
-| **Notify Discord** | Sends deployment success notification |
 
 ## Deployment Configuration
 
@@ -107,9 +88,10 @@ Create `.github/workflows/deploy.yml` in your repository:
 name: Deploy Application
 
 on:
-   push:
-      branches: [main]
    workflow_dispatch:
+   push:
+      branches: [ 'master' ]
+      paths: [ 'deployment.json' ]
 
 jobs:
    deploy:
