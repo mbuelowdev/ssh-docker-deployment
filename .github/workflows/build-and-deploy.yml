@@ -1,0 +1,145 @@
+name: Build and deploy
+
+on:
+  workflow_call:
+    inputs:
+      config_path:
+        required: true
+        type: string
+        default: './deployment.json'
+      discord_channel_id:
+        required: true
+        type: string
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get start time
+        id: statistics
+        shell: bash
+        run: |
+          echo "time_start=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup ssh key
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOYMENT_MACHINE_SSH_KEY }}
+
+      - name: Setup known_hosts
+        run: echo "${{ secrets.DEPLOYMENT_MACHINE_IP }} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKvWMd5SoHma/1T4hTUwEK174KlcHxxCk13zXBq+Y3HktjA678l/MOzJMuyEkzh06O1SEeMlYMBT4DqxFeo0QcU=" > ~/.ssh/known_hosts
+
+      - name: Get deployment config
+        id: deployment_config
+        shell: bash
+        run: |
+          # Extract attributes from the deployment.json
+          ./getAttribute.sh ${{ inputs.config_path }} name          ".name"          >> $GITHUB_OUTPUT
+          ./getAttribute.sh ${{ inputs.config_path }} tag           ".tag"           >> $GITHUB_OUTPUT
+          ./getAttribute.sh ${{ inputs.config_path }} version       ".version"       >> $GITHUB_OUTPUT
+          ./getAttribute.sh ${{ inputs.config_path }} url           ".url"           >> $GITHUB_OUTPUT
+          ./getAttribute.sh ${{ inputs.config_path }} informDiscord ".informDiscord" >> $GITHUB_OUTPUT
+          # Build the clean container name
+          image_name=$(jq -r ".name" deployment.json)
+          container_name_full_clean="${image_name//[^[:alnum:]]/_}"
+          echo "deployment_dir=/deployments/$container_name_full_clean" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx for exporting tarballs
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        id: build-image
+        uses: docker/build-push-action@v6
+        with:
+          tags: "${{ steps.deployment_config.outputs.name }}:${{ steps.deployment_config.outputs.tag }}"
+          context: .
+          outputs: "type=docker,dest=${{ github.workspace }}/image.tar"
+
+      - name: Create a lockfile on the deployment machine for this deployment process. Wait a maximum of 5 minutes for an exclusive lock.
+        timeout-minutes: 5
+        run: |
+          ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} <<EOF
+          while [ -e /tmp/deployment.Ar3jG48tr.lock ]; do sleep 1; done; touch /tmp/deployment.Ar3jG48tr.lock
+          EOF
+
+      - name: Foreach deployImages array element in deployment.json, stop already running containers
+        run: |
+          imageCount=$(jq '.deployImages | length' ${{ inputs.config_path }})
+          for ((i = 0 ; i < $imageCount ; i++)); do
+            image_name=$(jq -r ".deployImages[$i].name" ${{ inputs.config_path }})
+            container_name_full_clean="${image_name//[^[:alnum:]]/_}"
+            if [ "$image_name" != "${{ steps.deployment_config.outputs.name }}" ]; then
+              container_name_full_clean="${{ steps.deployment_config.outputs.name }}_$image_name"
+              container_name_full_clean="${container_name_full_clean//[^[:alnum:]]/_}"
+            fi
+            echo "Try removing container $container_name_full_clean for image $image_name"
+            ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} \
+            docker stop -t 10 $container_name_full_clean \|\| true
+          done
+
+      - name: Prune all unused docker container and images
+        run: |
+          ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} <<EOF
+          docker system prune -a -f
+          EOF
+
+      - name: Deploy repository
+        run: |
+          ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} rm -rf ${{ steps.deployment_config.outputs.deployment_dir }}
+          ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} mkdir -p ${{ steps.deployment_config.outputs.deployment_dir }}
+          cd ${{ github.workspace }}; zip -r repo.zip . -x '*.git*' -x 'repo.zip'
+          scp ${{ github.workspace }}/repo.zip root@${{ secrets.DEPLOYMENT_MACHINE_IP }}:${{ steps.deployment_config.outputs.deployment_dir }}/repo.zip
+          ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} unzip ${{ steps.deployment_config.outputs.deployment_dir }}/repo.zip -d ${{ steps.deployment_config.outputs.deployment_dir }}
+
+      - name: Load image from tar file
+        run: |
+          ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} <<EOF
+          docker load -i ${{ steps.deployment_config.outputs.deployment_dir }}/image.tar
+          EOF
+
+      - name: Foreach deployImages array element in deployment.json, run the container
+        run: |
+          imageCount=$(jq '.deployImages | length' ${{ inputs.config_path }})
+          for ((i = 0 ; i < $imageCount ; i++)); do
+            image_name=$(jq -r ".deployImages[$i].name" ${{ inputs.config_path }})
+            image_tag=$(jq -r ".deployImages[$i].tag" ${{ inputs.config_path }})
+            image_argPorts=$(jq -r ".deployImages[$i].argPorts" ${{ inputs.config_path }})
+            image_argVolumes=$(jq -r ".deployImages[$i].argVolumes" ${{ inputs.config_path }})
+            image_argExtra=$(jq -r ".deployImages[$i].argExtra" ${{ inputs.config_path }})
+            container_name_full_clean="${image_name//[^[:alnum:]]/_}"
+            if [ "$image_name" != "${{ steps.deployment_config.outputs.name }}" ]; then
+              container_name_full_clean="${{ steps.deployment_config.outputs.name }}_$image_name"
+              container_name_full_clean="${container_name_full_clean//[^[:alnum:]]/_}"
+            fi
+            echo "ssh exec: docker run --restart=unless-stopped --detach --add-host host.docker.internal:host-gateway --name $container_name_full_clean $image_argPorts $image_argVolumes $image_argExtra $image_name:$image_tag"
+            ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} \
+            docker run --restart=unless-stopped --detach --add-host host.docker.internal:host-gateway --name $container_name_full_clean $image_argPorts $image_argVolumes $image_argExtra $image_name:$image_tag
+          done
+
+      - name: Release lock on deployment machine via ssh command
+        run: |
+          ssh root@${{ secrets.DEPLOYMENT_MACHINE_IP }} <<EOF
+          rm /tmp/deployment.Ar3jG48tr.lock
+          EOF
+
+      - name: Post release message on discord
+        run: |
+          test "${{ steps.deployment_config.outputs.inform_discord }}" == "true" && \
+          APP_NAME="${{ github.repository }}" && \
+          APP_VERSION="${{ steps.deployment_config.outputs.version }}" && \
+          APP_SIZE="$(du -k image.tar | ( read k _ && expr $k / 1024 ))" && \
+          REPO_URL="https://github.com/${{ github.repository }}" && \
+          APP_URL="${{ steps.deployment_config.outputs.url }}" && \
+          COMMIT=$(echo "${{ github.event.head_commit.message }}" | tr -d \") && \
+          MINUTES="$(( ($(date +%s) - ${{ steps.statistics.outputs.time_start }} - 29) / 60))" && \
+          MSG="**✅ Successfully deployed: ${APP_NAME}**\n- **Source code**: <${REPO_URL}>\n- **Deployed to**: <${APP_URL}>\n- **Metadata**: Version ${APP_VERSION}, ${APP_SIZE} MB image, built in ~${MINUTES}min.\n- **Commit**: ${COMMIT}" && \
+          echo "Message to post: $MSG" && \
+          curl \
+          --location 'https://discordapp.com/api/v6/channels/${{ inputs.discord_channel_id }}/messages' \
+          --header 'Authorization: Bot ${{ secrets.DISCORD_BOT_TOKEN }}' \
+          --header 'Content-Type: application/json' \
+          --data "{\"content\":\"${MSG//$'\n'/\\n}\"}" \
+          || true
