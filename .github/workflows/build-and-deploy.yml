@@ -23,13 +23,13 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Checkout workflow repository
+        uses: actions/checkout@v3
         with:
           repository: 'mbuelowdev/ssh-docker-deployment'
           path: 'ssh-docker-deployment'
           ref: 'master'
-
-      - name: Checkout repository
-        uses: actions/checkout@v3
 
       - name: Setup ssh key
         uses: webfactory/ssh-agent@v0.8.0
