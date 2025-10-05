@@ -23,6 +23,13 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          repository: 'mbuelowdev/ssh-docker-deployment'
+          path: 'ssh-docker-deployment'
+          ref: 'master'
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Setup ssh key
         uses: webfactory/ssh-agent@v0.8.0
@@ -37,11 +44,11 @@ jobs:
         shell: bash
         run: |
           # Extract attributes from the deployment.json
-          ./getAttribute.sh ${{ inputs.config_path }} name          ".name"          >> $GITHUB_OUTPUT
-          ./getAttribute.sh ${{ inputs.config_path }} tag           ".tag"           >> $GITHUB_OUTPUT
-          ./getAttribute.sh ${{ inputs.config_path }} version       ".version"       >> $GITHUB_OUTPUT
-          ./getAttribute.sh ${{ inputs.config_path }} url           ".url"           >> $GITHUB_OUTPUT
-          ./getAttribute.sh ${{ inputs.config_path }} informDiscord ".informDiscord" >> $GITHUB_OUTPUT
+          ssh-docker-deployment/getAttribute.sh ${{ inputs.config_path }} name          ".name"          >> $GITHUB_OUTPUT
+          ssh-docker-deployment/getAttribute.sh ${{ inputs.config_path }} tag           ".tag"           >> $GITHUB_OUTPUT
+          ssh-docker-deployment/getAttribute.sh ${{ inputs.config_path }} version       ".version"       >> $GITHUB_OUTPUT
+          ssh-docker-deployment/getAttribute.sh ${{ inputs.config_path }} url           ".url"           >> $GITHUB_OUTPUT
+          ssh-docker-deployment/getAttribute.sh ${{ inputs.config_path }} informDiscord ".informDiscord" >> $GITHUB_OUTPUT
           # Build the clean container name
           image_name=$(jq -r ".name" deployment.json)
           container_name_full_clean="${image_name//[^[:alnum:]]/_}"
