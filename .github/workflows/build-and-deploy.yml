@@ -22,6 +22,9 @@ on:
       deployment_ssh_key:
         description: 'SSH Key in PEM format. ---BEGIN PRIVATE KEY--- and such.'
         required: true
+      discord_bot_token:
+        description: 'Discord bot token.'
+        required: true
 
 jobs:
   build-and-deploy:
@@ -103,7 +106,7 @@ jobs:
           MINUTES="$(( ($(date +%s) - ${{ steps.statistics.outputs.time_start }} - 29) / 60))"
           ssh-docker-deployment/scripts/notify-discord.sh \
             "${{ inputs.discord_channel_id }}" \
-            "${{ secrets.DISCORD_BOT_TOKEN }}" \
+            "${{ secrets.discord_bot_token }}" \
             "${{ github.repository }}" \
             "${{ steps.deployment_config.outputs.version }}" \
             "${{ steps.deployment_config.outputs.url }}" \
