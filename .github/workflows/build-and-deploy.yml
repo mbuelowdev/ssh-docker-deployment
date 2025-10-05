@@ -44,6 +44,7 @@ jobs:
         shell: bash
         run: |
           pwd
+          ls -alh .
           ls -alh ssh-docker-deployment
           # Extract attributes from the deployment.json
           ssh-docker-deployment/getAttribute.sh ${{ inputs.config_path }} name          ".name"          >> $GITHUB_OUTPUT
