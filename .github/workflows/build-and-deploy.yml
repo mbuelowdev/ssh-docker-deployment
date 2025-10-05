@@ -18,6 +18,10 @@ on:
       discord_channel_id:
         required: true
         type: string
+    secrets:
+      deployment_ssh_key:
+        description: 'SSH Key in PEM format. ---BEGIN PRIVATE KEY--- and such.'
+        required: true
 
 jobs:
   build-and-deploy:
@@ -42,7 +46,7 @@ jobs:
       - name: Setup ssh key
         uses: webfactory/ssh-agent@v0.8.0
         with:
-          ssh-private-key: ${{ secrets.DEPLOYMENT_MACHINE_SSH_KEY }}
+          ssh-private-key: ${{ secrets.deployment_ssh_key }}
 
       - name: Setup known_hosts
         run: echo "${{ inputs.deployment_host }} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKvWMd5SoHma/1T4hTUwEK174KlcHxxCk13zXBq+Y3HktjA678l/MOzJMuyEkzh06O1SEeMlYMBT4DqxFeo0QcU=" > ~/.ssh/known_hosts
