@@ -57,12 +57,15 @@ case "$ACTION" in
             IMAGE_PORTS=$(jq -r ".deployImages[$i].argPorts" "$CONFIG_PATH")
             IMAGE_VOLUMES=$(jq -r ".deployImages[$i].argVolumes" "$CONFIG_PATH")
             IMAGE_EXTRA=$(jq -r ".deployImages[$i].argExtra" "$CONFIG_PATH")
-            
+            IMAGE_ARGS=$(jq -r ".deployImages[$i].argImageArgs" "$CONFIG_PATH")
+
+            [ "$IMAGE_ARGS" = "null" ] && IMAGE_ARGS=""
+
             CONTAINER_NAME=$(get_clean_name "$IMAGE_NAME")
             
             echo "Starting container: $CONTAINER_NAME"
             ssh "$SSH_USER"@"$SSH_HOST" \
-                "docker run --restart=unless-stopped --detach --add-host host.docker.internal:host-gateway --name $CONTAINER_NAME $IMAGE_PORTS $IMAGE_VOLUMES $IMAGE_EXTRA $IMAGE_NAME:$IMAGE_TAG"
+                "docker run --restart=unless-stopped --detach --add-host host.docker.internal:host-gateway --name $CONTAINER_NAME $IMAGE_PORTS $IMAGE_VOLUMES $IMAGE_EXTRA $IMAGE_NAME:$IMAGE_TAG $IMAGE_ARGS"
         done
         echo "Container starting completed"
         ;;

@@ -13,14 +13,16 @@
       "tag": "latest",
       "argPorts": "-p 172.17.0.1:42001:80",
       "argVolumes": "",
-      "argExtra": "-e SOME_ENVIRONMENT_VAR_LOADED_FROM_SERVER_ENV"
+      "argExtra": "-e SOME_ENVIRONMENT_VAR_LOADED_FROM_SERVER_ENV",
+      "argImageArgs": "--additional-arguments-to-the-image=true"
     },
     {
       "name": "postgres",
       "tag": "17.6",
       "argPorts": "-p 172.17.0.1:5432:5432",
       "argVolumes": "-v /deployments/mbuelow_dev_my_project_p1/init.sql:/docker-entrypoint-initdb.d/init.sql -v my_project_p1_postgres_data:/var/lib/postgresql",
-      "argExtra": "-e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=database"
+      "argExtra": "-e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=database",
+      "argImageArgs": ""
     }
   ]
 }
