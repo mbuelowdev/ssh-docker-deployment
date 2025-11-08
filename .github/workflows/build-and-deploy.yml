@@ -103,7 +103,7 @@ jobs:
         if: steps.deployment_config.outputs.inform_discord == 'true'
         run: |
           APP_SIZE="$(du -k image.tar | ( read k _ && expr $k / 1024 ))"
-          MINUTES="$(( ($(date +%s) - ${{ steps.statistics.outputs.time_start }} - 29) / 60))"
+          MINUTES="$(( ($(date +%s) - ${{ steps.statistics.outputs.time_start }} + 30 + 10) / 60))"
           ssh-docker-deployment/scripts/notify-discord.sh \
             "${{ inputs.discord_channel_id }}" \
             "${{ secrets.discord_bot_token }}" \
