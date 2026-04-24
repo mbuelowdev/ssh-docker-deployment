@@ -34,6 +34,7 @@ Create a `deployment.json` file in your project root with the following structur
    "version": "1.0.0",
    "name": "your-app/image-name",
    "tag": "latest",
+   "buildCommitSha": null,
    "url": "https://your-app.example.com",
    "informDiscord": true,
    "deployImages": [
@@ -62,6 +63,7 @@ Create a `deployment.json` file in your project root with the following structur
 | `version` | string | Application version for notifications |
 | `name` | string | Main Docker image name |
 | `tag` | string | Docker image tag |
+| `buildCommitSha` | string \| null | Optional git commit/tag/branch to checkout before building (defaults to latest checked-out commit when null/omitted) |
 | `url` | string | Application URL for notifications |
 | `informDiscord` | boolean | Whether to send Discord notifications |
 | `deployImages` | array | List of containers to deploy |

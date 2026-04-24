@@ -21,6 +21,7 @@ TAG=$(jq -r ".tag" "$CONFIG_PATH")
 VERSION=$(jq -r ".version" "$CONFIG_PATH")
 URL=$(jq -r ".url" "$CONFIG_PATH")
 INFORM_DISCORD=$(jq -r ".informDiscord" "$CONFIG_PATH")
+BUILD_COMMIT_SHA=$(jq -r ".buildCommitSha // empty" "$CONFIG_PATH")
 
 # Build the clean container name
 CONTAINER_NAME_CLEAN="${NAME//[^[:alnum:]]/_}"
@@ -32,4 +33,5 @@ echo "tag=$TAG"
 echo "version=$VERSION"
 echo "url=$URL"
 echo "inform_discord=$INFORM_DISCORD"
+echo "build_commit_sha=$BUILD_COMMIT_SHA"
 echo "deployment_dir=$DEPLOYMENT_DIR"
