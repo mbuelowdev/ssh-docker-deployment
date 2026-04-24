@@ -39,6 +39,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Checkout specified build commit
+        if: steps.deployment_config.outputs.build_commit_sha != ''
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.deployment_config.outputs.build_commit_sha }}
+
       - name: Checkout workflow repository
         uses: actions/checkout@v3
         with:
@@ -58,13 +64,6 @@ jobs:
         id: deployment_config
         run: |
           ssh-docker-deployment/scripts/extract-config.sh ${{ inputs.config_path }} >> $GITHUB_OUTPUT
-
-      - name: Checkout specified build commit
-        if: steps.deployment_config.outputs.build_commit_sha != ''
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ github.repository }}
-          ref: ${{ steps.deployment_config.outputs.build_commit_sha }}
 
       - name: Set up Docker Buildx for exporting tarballs
         uses: docker/setup-buildx-action@v3
