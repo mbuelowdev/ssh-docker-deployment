@@ -15,6 +15,10 @@ on:
         required: true
         type: string
         default: './deployment.json'
+      build_commit_sha:
+        required: false
+        type: string
+        default: ''
       discord_channel_id:
         required: true
         type: string
@@ -40,10 +44,11 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Checkout specified build commit
-        if: steps.deployment_config.outputs.build_commit_sha != ''
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ steps.deployment_config.outputs.build_commit_sha }}
+        if: inputs.build_commit_sha != ''
+        shell: bash
+        run: |
+          git fetch --depth=1 origin "${{ inputs.build_commit_sha }}"
+          git checkout --detach FETCH_HEAD
 
       - name: Checkout workflow repository
         uses: actions/checkout@v3
@@ -67,6 +72,13 @@ jobs:
 
       - name: Set up Docker Buildx for exporting tarballs
         uses: docker/setup-buildx-action@v3
+
+      - name: Log effective build revision
+        shell: bash
+        run: |
+          echo "Building repository revision:"
+          git rev-parse HEAD
+          git show -s --format='%h %s'
 
       - name: Build image
         id: build-image

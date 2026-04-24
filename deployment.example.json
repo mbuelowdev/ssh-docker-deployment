@@ -2,7 +2,6 @@
   "version": "1.0.0",
   "name": "mbuelow.dev/my-project-p1",
   "tag": "latest",
-  "buildCommitSha": null,
   "url": "https://p1.mbuelow.dev",
   "informDiscord": true,
   "_documentation1": "The arguments are being passed to docker run. They can be empty.",
