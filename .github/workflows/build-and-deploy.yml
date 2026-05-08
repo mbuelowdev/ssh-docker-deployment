@@ -63,7 +63,12 @@ jobs:
           ssh-private-key: ${{ secrets.deployment_ssh_key }}
 
       - name: Setup known_hosts
-        run: echo "${{ inputs.deployment_host }} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKvWMd5SoHma/1T4hTUwEK174KlcHxxCk13zXBq+Y3HktjA678l/MOzJMuyEkzh06O1SEeMlYMBT4DqxFeo0QcU=" > ~/.ssh/known_hosts
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          # Discover host keys from the current DNS/IP of deployment_host (no manual fingerprint updates when the IP changes).
+          ssh-keyscan -T 30 -t rsa,ecdsa,ed25519 -H "${{ inputs.deployment_host }}" >> ~/.ssh/known_hosts
 
       - name: Extract deployment configuration
         id: deployment_config

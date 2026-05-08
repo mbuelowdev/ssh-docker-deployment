@@ -116,19 +116,13 @@ Configure these secrets in your repository:
 | `DEPLOYMENT_SSH_KEY` | SSH private key for deployment server access |
 | `DISCORD_BOT_TOKEN` | Discord bot token for notifications |
 
-### 3. Update Known Hosts (If Needed)
+### 3. SSH host keys
 
-If your deployment server changes, update the SSH fingerprint in the workflow:
+The reusable workflow runs `ssh-keyscan` against `deployment_host` at the start of each job, so when your server’s IP changes (same hostname, new A/AAAA record) you do not need to edit any fingerprint in the repo.
 
-```yaml
-- name: Setup known_hosts
-  run: echo "YOUR_SERVER_IP YOUR_SSH_FINGERPRINT" > ~/.ssh/known_hosts
-```
+Use a stable hostname (dynamic DNS or similar) as `deployment_host`, not a raw IP you expect to change without DNS updates.
 
-To get your server's SSH fingerprint:
-```bash
-ssh-keyscan -t ecdsa your-server.com
-```
+If you replace the server and its SSH host keys change, the next run still succeeds because the job refreshes `known_hosts` from `ssh-keyscan`. That is more convenient than a pinned key but slightly weaker if an attacker could MITM the scan; for stricter pinning, fork the workflow and set `known_hosts` to a fixed key line instead.
 
 ## Required Software on Deployment Host
 
